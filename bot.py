@@ -1,4 +1,5 @@
 # bot.py
+
 import os
 import discord
 from discord.ext import commands, tasks
@@ -77,6 +78,9 @@ class pollView(discord.ui.View): # Create a class called MyView that subclasses 
                     break
             if(inResponse == False):
                 self.savedResponses.append(userResponse(interaction.user.name, interaction.data['custom_id']))
+                og = await interaction.original_response()
+                counter = str(len(self.savedResponses))
+                await interaction.edit_original_response(content = f"Poll will run for {self.timeout} seconds!\nPlease Select One:\nCurrent number of votes: " + counter, view=self)
             for y in self.savedResponses:
                  print(y.username, y.response)
         for z in range(0, len(self.children)):
@@ -87,7 +91,7 @@ class pollView(discord.ui.View): # Create a class called MyView that subclasses 
 @bot.event
 async def on_ready():
     print ("connected")
-    guild = discord.utils.get(bot.guilds, name=SERVER)
+    guild = discord.utils.get(bot.guilds)
     print(f"in {guild.name}")
     print(
              f'{bot.user} is connected to the following guild:\n'
@@ -114,6 +118,8 @@ async def runPoll(ctx):
 
     bot_channel = discord.utils.get(ctx.guild.channels, name='☾—robot-friends')
     general = discord.utils.get(ctx.guild.channels, name='☾—friends-we-are-friends')
+    #bot_channel = discord.utils.get(ctx.guild.channels, name='bot-channel') #Testing purposes
+    #general = discord.utils.get(ctx.guild.channels, name='general') #Testing purposes
     bot_channel_id = bot_channel.id
     general_id = general.id
 
@@ -127,7 +133,7 @@ async def runPoll(ctx):
     pollAnswers = [] #init all poll answers
     userTimeout = 0
 
-    await ctx.author.dm_channel.send(f"Hello {ctx.author}, what will be the poll question?")
+    await ctx.author.dm_channel.send(f"Hello {ctx.author.name}, what will be the poll question?")
 
     def check(msg): #same user who called !poll
         return msg.author == ctx.author
@@ -157,6 +163,14 @@ async def runPoll(ctx):
     input_str = msg.content
     pollAnswers = input_str.split(',')
 
+    for x in pollAnswers: #add spaces to duplicates for custom_ID
+        for y in range(0, len(pollAnswers)):
+            if(x == pollAnswers[y]):
+                for z in range(0, y):
+                    pollAnswers[y] = " " + pollAnswers[y]
+
+
+
     await ctx.author.dm_channel.send(f"Is this correct?\nPoll Question: {pollQuestion}\nPoll Responses: {pollAnswers}\nDuration: {userTimeout} seconds\n\n(Respond with 'y' for Yes)")
 
     msg = await bot.wait_for("message", check=check)
@@ -168,17 +182,15 @@ async def runPoll(ctx):
 
         await ctx.author.dm_channel.send("Poll submitted!")
 
-        await ending.send(f'Poll Question: {pollQuestion}')
+        await ending.send(f'Poll Question: {pollQuestion}\nCreated by: {ctx.author.name}')
 
         view = pollView(pollAnswers, ctx.author, timeout=userTimeout)
 
         await ending.send(f"Poll will run for {userTimeout} seconds!\nPlease Select One:", view=view)
-
-        print(view.timeout)
-
+        
         await view.wait()
 
-        await ending.send("Poll has concluded! Here are the results...")
+        await ending.send(f"Poll has concluded for: {pollQuestion}\nHere are the results...")
 
         #for x in view.savedResponses:
         #    await ctx.send(f'{x.username}, {x.response}')
